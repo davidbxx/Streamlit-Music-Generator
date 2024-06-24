@@ -1,16 +1,9 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.svm import SVC
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from sklearn.feature_extraction.text import CountVectorizer
-import matplotlib.pyplot as plt
+from sklearn.linear_model import LogisticRegression
 
-st.title("Model Analysis")
+st.title("Best Music Strategy")
 
 # Sample extracted data
 data = {
@@ -58,85 +51,30 @@ df = pd.DataFrame(data)
 
 # Convert marketing strategies into numerical features using CountVectorizer
 vectorizer = CountVectorizer()
-X = vectorizer.fit_transform(df['Marketing Strategies'])
+X = vectorizer.fit_transform(df['Genre'])
 
 # Target variable
-y = df['Won Grammy']
+y = df['Marketing Strategies']
 
-# Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Train Logistic Regression model
+lr_model = LogisticRegression(max_iter=1000)
+lr_model.fit(X, y)
 
-# Define models
-models = {
-    'Naive Bayes': MultinomialNB(),
-    'SVM': SVC(),
-    'Random Forest': RandomForestClassifier(n_estimators=100),
-    'Logistic Regression': LogisticRegression(max_iter=1000)
-}
+# Text input for user message
+user_message = st.text_input("Enter a music genre:")
 
-# Evaluation metrics
-metrics = ['accuracy', 'precision', 'recall', 'f1']
+# Function to predict marketing strategies based on user input
+def predict_marketing_strategy(input_message):
+    input_transformed = vectorizer.transform([input_message])
+    predicted_strategies = lr_model.predict(input_transformed)
+    return predicted_strategies[0].split(', ')  # Split strategies into separate items
 
-# Evaluate models using cross-validation
-results = {}
-for model_name, model in models.items():
-    model_results = {}
-    for metric in metrics:
-        scores = cross_val_score(model, X_train, y_train, cv=5, scoring=metric)
-        model_results[metric] = np.mean(scores)
-    results[model_name] = model_results
+if user_message:
+    st.subheader("Predicted marketing strategies:")
+    predicted_strategies = predict_marketing_strategy(user_message)
+    for strategy in predicted_strategies:
+        st.markdown(f"- {strategy.strip()}")  # Display each strategy as a bullet point
 
-# Calculate the average score for each model
-average_scores = {model_name: np.mean(list(metrics.values())) for model_name, metrics in results.items()}
-
-# Find the best model based on the average score of all metrics
-best_model_name = max(average_scores, key=average_scores.get)
-best_model_score = average_scores[best_model_name]
-
-# Prepare data for display
-results_data = {
-    "Model": list(results.keys()),
-    "Accuracy": [metrics['accuracy'] for metrics in results.values()],
-    "Precision": [metrics['precision'] for metrics in results.values()],
-    "Recall": [metrics['recall'] for metrics in results.values()],
-    "F1 Score": [metrics['f1'] for metrics in results.values()]
-}
-results_df = pd.DataFrame(results_data)
-
-average_scores_data = {
-    "Model": list(average_scores.keys()),
-    "Average Score": list(average_scores.values())
-}
-average_scores_df = pd.DataFrame(average_scores_data)
-
-# Displaying the results as a table
-st.subheader("Model Performance")
-st.dataframe(results_df.set_index('Model').style.set_properties(**{'text-align': 'center'}).set_table_styles([{
-    'selector': 'th',
-    'props': [('text-align', 'center')]
-}]))
-
-# Displaying the average scores as a table
-st.subheader("Average Scores")
-st.dataframe(average_scores_df.set_index('Model').style.set_properties(**{'text-align': 'center'}).set_table_styles([{
-    'selector': 'th',
-    'props': [('text-align', 'center')]
-}]))
-
-# Plotting the results
-st.subheader("Model Performance Visualization")
-fig, ax = plt.subplots()
-results_df.set_index('Model').plot(kind='bar', y=['Accuracy', 'Precision', 'Recall', 'F1 Score'], ax=ax)
-ax.set_ylabel('Scores')
-plt.xticks(rotation=45)
-st.pyplot(fig)
-
-# Display the best model
-st.subheader(f"Best model based on overall average score: {best_model_name}")
-
-# Add a button at the bottom
-if st.button("Contact us to build out the strategy"):
-    st.write("Thank you for your interest! Please contact us at [your-email@example.com](mailto:your-email@example.com) to build out the strategy.")
 # Add a button at the bottom
 if st.button("Contact us to build out the strategy"):
     st.markdown("[Click here to email us](mailto:Oluwatobiloba.odunuga@stu.cu.edu.ng)")
